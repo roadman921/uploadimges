@@ -1,3 +1,27 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Party Photo Upload</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial; max-width:720px; margin:24px auto; padding:12px; }
+    .drop { border: 2px dashed #bbb; padding:24px; text-align:center; border-radius:12px; }
+    input[type=file] { display:block; margin:12px 0; }
+    .progress { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>Party Photo Upload</h1>
+  <p>Pick photos (or drag & drop) and upload. No sign-in required.</p>
+
+  <div class="drop" id="dropzone">
+    <p>Drag & drop photos here, or</p>
+    <input id="fileInput" type="file" accept="image/*" multiple />
+    <button id="uploadBtn">Upload Selected</button>
+    <div class="progress" id="status"></div>
+  </div>
+
 <script>
 const APPSCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3Hz8lZZ9NNBrd49uUlegJeea3hwsfLkUm4ENeu6xdzkD5e0xdTW7ed3QO_KpxR64lLw/exec';
 const fileInput = document.getElementById('fileInput');
@@ -30,3 +54,5 @@ uploadBtn.addEventListener('click', async () => {
   }
 });
 </script>
+</body>
+</html>
