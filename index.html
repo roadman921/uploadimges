@@ -1,58 +1,70 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Party Photo Upload</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Upload to Google Drive</title>
   <style>
-    body { font-family: system-ui, Arial; max-width:720px; margin:24px auto; padding:12px; }
-    .drop { border: 2px dashed #bbb; padding:24px; text-align:center; border-radius:12px; }
-    input[type=file] { display:block; margin:12px 0; }
-    .progress { margin-top:12px; }
+    body { font-family: sans-serif; max-width: 600px; margin: 50px auto; }
+    .drop { border: 2px dashed #aaa; padding: 30px; text-align: center; border-radius: 10px; }
+    input, button { margin-top: 10px; }
+    #status { margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>Party Photo Upload</h1>
-  <p>Pick photos (or drag & drop) and upload. No sign-in required.</p>
-
+  <h1>Upload File to Drive</h1>
   <div class="drop" id="dropzone">
-    <p>Drag & drop photos here, or</p>
-    <input id="fileInput" type="file" accept="image/*" multiple />
-    <button id="uploadBtn">Upload Selected</button>
-    <div class="progress" id="status"></div>
+    Drag & drop file here, or
+    <input type="file" id="fileInput">
+    <button id="uploadBtn">Upload</button>
+    <div id="status"></div>
   </div>
 
-<script>
-const APPSCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3Hz8lZZ9NNBrd49uUlegJeea3hwsfLkUm4ENeu6xdzkD5e0xdTW7ed3QO_KpxR64lLw/exec';
-const fileInput = document.getElementById('fileInput');
-const uploadBtn = document.getElementById('uploadBtn');
-const status = document.getElementById('status');
+  <script>
+    const APPSCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3Hz8lZZ9NNBrd49uUlegJeea3hwsfLkUm4ENeu6xdzkD5e0xdTW7ed3QO_KpxR64lLw/exec";
 
-uploadBtn.addEventListener('click', async () => {
-  const files = fileInput.files;
-  if (!files || files.length === 0) return status.innerText = "Pick a file first";
-  status.innerText = "Uploading...";
+    const fileInput = document.getElementById("fileInput");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const status = document.getElementById("status");
+    const dropzone = document.getElementById("dropzone");
 
-  for (let f of files) {
-    const formData = new FormData();
-    formData.append('file', f, f.name);
+    dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.style.borderColor = "#333"; });
+    dropzone.addEventListener("dragleave", e => { dropzone.style.borderColor = "#aaa"; });
+    dropzone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropzone.style.borderColor = "#aaa";
+      if (e.dataTransfer.files) fileInput.files = e.dataTransfer.files;
+    });
 
-    try {
-      const resp = await fetch(APPSCRIPT_URL, {
-        method: 'POST',
-        body: formData
+    uploadBtn.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) return alert("Select a file first");
+
+      status.innerText = "Reading file...";
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]); // Base64 only
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      const j = await resp.json();
-      if (j.success) {
-        status.innerHTML += `✅ Uploaded: ${j.name}<br/>`;
-      } else {
-        status.innerHTML += `❌ Failed: ${f.name} (${j.error})<br/>`;
+
+      status.innerText = "Uploading...";
+      try {
+        const res = await fetch(APPSCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name, data: dataUrl, mimeType: file.type || "application/octet-stream" })
+        });
+        const json = await res.json();
+        if (json.success) {
+          status.innerHTML = `Upload complete: <strong>${json.name}</strong>`;
+        } else {
+          status.innerText = "Upload failed: " + json.error;
+        }
+      } catch (err) {
+        status.innerText = "Error: " + err.message;
       }
-    } catch (err) {
-      status.innerHTML += `🚫 Upload error: ${err.message}<br/>`;
-    }
-  }
-});
-</script>
+    });
+  </script>
 </body>
 </html>
