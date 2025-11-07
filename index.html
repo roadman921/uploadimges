@@ -1,96 +1,32 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Party Photo Upload</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body { font-family: system-ui, Arial; max-width:720px; margin:24px auto; padding:12px; }
-    .drop { border: 2px dashed #bbb; padding:24px; text-align:center; border-radius:12px; }
-    input[type=file] { display:block; margin:12px 0; }
-    .progress { margin-top:12px; }
-  </style>
-</head>
-<body>
-  <h1>Party Photo Upload</h1>
-  <p>Pick photos (or drag & drop) and upload. No sign-in required.</p>
+<script>
+const APPSCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3Hz8lZZ9NNBrd49uUlegJeea3hwsfLkUm4ENeu6xdzkD5e0xdTW7ed3QO_KpxR64lLw/exec';
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const status = document.getElementById('status');
 
-  <div class="drop" id="dropzone">
-    <p>Drag & drop photos here, or</p>
-    <input id="fileInput" type="file" accept="image/*" multiple />
-    <button id="uploadBtn">Upload Selected</button>
-    <div class="progress" id="status"></div>
-  </div>
+uploadBtn.addEventListener('click', async () => {
+  const files = fileInput.files;
+  if (!files || files.length === 0) return status.innerText = "Pick a file first";
+  status.innerText = "Uploading...";
 
-  <script>
-    // ===== CONFIG =====
-    const APPSCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3Hz8lZZ9NNBrd49uUlegJeea3hwsfLkUm4ENeu6xdzkD5e0xdTW7ed3QO_KpxR64lLw/exec'; // replace
-    const MAX_SINGLE_FILE_MB = 25; // should match Apps Script MAX_FILE_BYTES
-    // ===================
+  for (let f of files) {
+    const formData = new FormData();
+    formData.append('file', f, f.name);
 
-    const fileInput = document.getElementById('fileInput');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const status = document.getElementById('status');
-    const dropzone = document.getElementById('dropzone');
-
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = '#666'; });
-    dropzone.addEventListener('dragleave', e => { dropzone.style.borderColor = '#bbb'; });
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropzone.style.borderColor = '#bbb';
-      if (e.dataTransfer.files) fileInput.files = e.dataTransfer.files;
-    });
-
-    uploadBtn.addEventListener('click', async () => {
-      const files = fileInput.files;
-      if (!files || files.length === 0) return alert('Pick at least one file');
-
-      // Prepare file read promises
-      const toUpload = [];
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i];
-        if (f.size > MAX_SINGLE_FILE_MB * 1024 * 1024) {
-          status.innerText = `File "${f.name}" is too large (> ${MAX_SINGLE_FILE_MB} MB).`;
-          continue;
-        }
-        toUpload.push(readFileAsDataURL(f).then(dataUrl => ({
-          filename: f.name,
-          mimeType: f.type || 'image/jpeg',
-          data: dataUrl
-        })));
-      }
-      if (toUpload.length === 0) return;
-
-      status.innerText = 'Preparing files...';
-      const filesPayload = await Promise.all(toUpload);
-
-      // Build JSON and POST
-      status.innerText = 'Uploading...';
-      try {
-        const resp = await fetch(APPSCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: filesPayload })
-        });
-        const j = await resp.json();
-        if (j.ok) {
-          status.innerHTML = 'Upload complete.<br/>' + j.results.map(r => `${r.filename}: ${r.status}`).join('<br/>');
-        } else {
-          status.innerText = 'Upload failed: ' + (j.error || JSON.stringify(j));
-        }
-      } catch (err) {
-        status.innerText = 'Upload error: ' + err.message;
-      }
-    });
-
-    function readFileAsDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(file); // gives "data:<mime>;base64,AAAA..."
+    try {
+      const resp = await fetch(APPSCRIPT_URL, {
+        method: 'POST',
+        body: formData
       });
+      const j = await resp.json();
+      if (j.success) {
+        status.innerHTML += `✅ Uploaded: ${j.name}<br/>`;
+      } else {
+        status.innerHTML += `❌ Failed: ${f.name} (${j.error})<br/>`;
+      }
+    } catch (err) {
+      status.innerHTML += `🚫 Upload error: ${err.message}<br/>`;
     }
-  </script>
-</body>
-</html>
+  }
+});
+</script>
